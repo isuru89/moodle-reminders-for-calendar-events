@@ -498,9 +498,9 @@ function get_users_of_course($courseid, $courseroleids, &$arraytoappend) {
     $PAGE->set_context($context);
     $roleusers = get_role_users($courseroleids, $context, true, 'ra.id as ra_id, u.*');
     $senduserids = array_map(
-    function($u) {
-        return $u->id;
-    }, $roleusers);
+        function($u) {
+            return $u->id;
+        }, $roleusers);
     $senduserrefs = array_combine($senduserids, $roleusers);
     foreach ($senduserids as $userid) {
         if (!array_key_exists($userid, $arraytoappend)) {
@@ -607,9 +607,9 @@ function get_correct_timeformat_user($user) {
  */
 function get_active_role_users($activityroleids, $context) {
     return get_role_users($activityroleids, $context, true, 'ra.id, u.*',
-                    null, false, '', '', '',
-                    'ue.status = :userenrolstatus',
-                    array('userenrolstatus' => ENROL_USER_ACTIVE));
+        null, false, '', '', '',
+        'ue.status = :userenrolstatus',
+        array('userenrolstatus' => ENROL_USER_ACTIVE));
 }
 
 /**
@@ -721,6 +721,21 @@ function get_from_user() {
         $fromuser = get_admin();
     }
     return $fromuser;
+}
+
+/**
+ * Returns filter_multilangsecond instance if filter is installed.
+ *
+ * @return filter_multilangsecond|null
+ */
+function get_multilangsecond_filter(){
+    $filterinfo = core_plugin_manager::instance()->get_plugin_info('filter_multilang2');
+    if(!is_null($filterinfo)){
+        require_once($filterinfo->rootdir . '/filter.php');
+        return new filter_multilang2(null,  array());
+    }else{
+        return null;
+    }
 }
 
 /**
