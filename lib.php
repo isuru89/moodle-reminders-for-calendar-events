@@ -106,7 +106,7 @@ function local_reminders_cron_task() {
  * @return void nothing.
  */
 function local_reminders_cron_pre($currtime) {
-    global $CFG, $DB;
+    global $CFG, $DB, $USER;
 
     $aheaddaysindex = array(7 => 0, 3 => 1, 1 => 2);
     $eventtypearray = array('site', 'user', 'course', 'due', 'group');
@@ -154,7 +154,7 @@ function local_reminders_cron_pre($currtime) {
             $whereclause .= ' OR ';
         }
         $whereclause .= '(timestart - '.$sahead.' >= '.$timewindowstart.' AND '.
-                        'timestart - '.$sahead.' <= '.$timewindowend.')';
+            'timestart - '.$sahead.' <= '.$timewindowend.')';
         $flagor = true;
     }
     $whereclause .= ')';
@@ -179,6 +179,8 @@ function local_reminders_cron_pre($currtime) {
 
     $fromuser = get_from_user();
 
+    $multilang_filter = get_multilangsecond_filter(); // get multilang2 filter instanz
+
     $allemailfailed = true;
     foreach ($upcomingevents as $event) {
         $event = new calendar_event($event);
@@ -188,13 +190,13 @@ function local_reminders_cron_pre($currtime) {
         $fromcustom = false;
 
         if ($event->timestart - REMINDERS_1DAYBEFORE_INSECONDS >= $timewindowstart &&
-                $event->timestart - REMINDERS_1DAYBEFORE_INSECONDS <= $timewindowend) {
+            $event->timestart - REMINDERS_1DAYBEFORE_INSECONDS <= $timewindowend) {
             $aheadday = 1;
         } else if ($event->timestart - REMINDERS_3DAYSBEFORE_INSECONDS >= $timewindowstart &&
-                $event->timestart - REMINDERS_3DAYSBEFORE_INSECONDS <= $timewindowend) {
+            $event->timestart - REMINDERS_3DAYSBEFORE_INSECONDS <= $timewindowend) {
             $aheadday = 3;
         } else if ($event->timestart - REMINDERS_7DAYSBEFORE_INSECONDS >= $timewindowstart &&
-                $event->timestart - REMINDERS_7DAYSBEFORE_INSECONDS <= $timewindowend) {
+            $event->timestart - REMINDERS_7DAYSBEFORE_INSECONDS <= $timewindowend) {
             $aheadday = 7;
         } else {
             // Find if custom schedule has been defined by user.
@@ -244,7 +246,7 @@ function local_reminders_cron_pre($currtime) {
 
         } else {
             mtrace("   [Local Reminder] A reminder can be sent for event#$event->id ".
-                    ", detected through custom schedule.");
+                ", detected through custom schedule.");
         }
 
         $reminderref = null;
@@ -301,7 +303,7 @@ function local_reminders_cron_pre($currtime) {
 
         } catch (Exception $ex) {
             mtrace("  [Local Reminder - ERROR] Error occured when initializing ".
-                    "for event#[$event->id] (type: $event->eventtype) ".$ex->getMessage());
+                "for event#[$event->id] (type: $event->eventtype) ".$ex->getMessage());
             mtrace("  [Local Reminder - ERROR] ".$ex->getTraceAsString());
             continue;
         }
@@ -323,6 +325,15 @@ function local_reminders_cron_pre($currtime) {
         $sendusers = $reminderref->get_sending_users();
         foreach ($sendusers as $touser) {
             $eventdata = $reminderref->get_event_to_send($fromuser, $touser);
+
+            if(!empty($multilang_filter)){
+                $global_user = $USER; // store global user obj.
+                $USER = $touser; // replace global user obj. with current touser obj. for correct language information when executing filter
+                $eventdata->fullmessage = $multilang_filter->filter($eventdata->fullmessage);
+                $eventdata->fullmessagehtml = $multilang_filter->filter($eventdata->fullmessagehtml);
+                $eventdata->smallmessage = $multilang_filter->filter($eventdata->smallmessage);
+                $USER = $global_user; // bring back global user obj
+            }
 
             try {
                 $mailresult = message_send($eventdata);
